@@ -1,0 +1,4 @@
+data/forTransfer/*
+data/transferred/*
+data/failed/*
+data/store
