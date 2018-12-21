@@ -1,9 +1,55 @@
 import datetime as dt
 import shutil
+import threading
 import time
+
+transferQueue = []
+
+
+
+def fileTransferProcess():
+  global transferQueue
+  
+  #Configuration options
+  concurrentTransfers = 3
+  timeToSkip = 60 # seconds
+  
+  while True:
+    
+    if len(transferQueue) > 0:
+      o = transferQueue.pop(0)
+      
+      if (dt.datetime.utcnow() - o[0]).total_seconds() > timeToSkip:
+        skipTransfer(o[1])
+      else:
+        # Note: +2 because main thread and "fileTransferProcess" thread are running
+        while threading.active_count() >= concurrentTransfers + 2:
+          time.sleep(0.1) # Avoid brutal loop by inserting trivial wait time
+        f = threading.Thread(target=fileTransfer,args=(o[1],))
+        f.start()
+        print(">>Threads: %d" % threading.active_count())
+        
+        
+    else:
+      # Queue empty
+      time.sleep(0.1) # Avoid brutal loop by inserting trivial wait time
+
+def fileTransfer(fileName):
+  time.sleep(5)
+  shutil.move("data/forTransfer/%s" % fileName, "data/transferred/%s" % fileName)
+  print("FTP: File transferred %s" % fileName)
+
+
+def skipTransfer(fileName):
+  shutil.move("data/forTransfer/%s" % fileName, "data/failed/%s" % fileName)
+  print("FTP: Skipping file due to age %s" % fileName)
 
 
 def main():
+  global transferQueue
+  
+  transferThread = threading.Thread(target=fileTransferProcess)
+  transferThread.start()
   
   # Configuration options for the scans:
   scheduleInterval = 6 # Minutes
@@ -37,6 +83,7 @@ def main():
   
   #Define task list:
   scheduledTasks = [aziLongRange, volStandardScan, aziBirdBath]
+  #scheduledTasks = [aziLongRange, aziBirdBath]
   
   
   # Run the schedule:
@@ -46,7 +93,7 @@ def main():
     tSeconds = 3600*t.hour + 60*t.minute + t.second
     lagNextSchedule = scheduleIntervalSec - (tSeconds % scheduleIntervalSec)
     
-    print("Waiting for next schedule (%d s)" % lagNextSchedule)
+    print("SIM: Waiting for next schedule (%d s)" % lagNextSchedule)
     
     time.sleep(lagNextSchedule)
         
@@ -70,26 +117,21 @@ class AzimuthScan:
   def run(self):
     time.sleep(3) # Simulate antenna move time
     scanTime = 360.0 / self.speed
-    
     scanStartTime = dt.datetime.utcnow()
-    
-    print("  Commencing azimuth scan %s at %s" % (self.name, scanStartTime.strftime("%Y-%m-%d %H:%M:%S")))
-    
-    time.sleep(scanTime)
-    
+    print("SIM: Commencing azimuth scan %s at %s" % (self.name, scanStartTime.strftime("%Y-%m-%d %H:%M:%S")))
+    time.sleep(scanTime) # Simulate scan time
     # Prepare the files for transfer
     for moment in self.moments:
       fileName = "AUS1_%s.azi_%s%s.azi" % (self.name, scanStartTime.strftime("%Y%m%d%H%M%S"), moment)
-      print("    Processing file %s" % fileName)
+      print("SIM: Creating file %s" % fileName)
       shutil.copyfile("data/dummy.azi","data/forTransfer/%s" % fileName)
+      transferQueue.append([dt.datetime.utcnow(), fileName])
     
-    print("  Completed azimuth scan %s at %s" % (self.name, dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")))
+    print("SIM: Completed azimuth scan %s at %s" % (self.name, dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")))
     
-
-
-
-
-
+    #print("Transfer queue:")
+    #for o in transferQueue:
+    #  print(o[1])
 
 
 
