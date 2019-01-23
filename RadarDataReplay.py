@@ -1,6 +1,7 @@
 import datetime as dt
 import shutil
 import platform
+import subprocess
 import threading
 import time
 
@@ -46,6 +47,10 @@ def fileTransferProcess():
 
 def fileTransfer(fileName):
   time.sleep(5)
+
+  subprocess.call(["./rainftp-bom.sh", "oi-ars-3drapic.bom.gov.au", "radar-sftp", "data/forTransfer/%s" % fileName, "uploads/AUS0", fileName])
+
+
   shutil.move("data/forTransfer/%s" % fileName, "data/transferred/%s" % fileName)
   print("FTP: File transferred %s" % fileName)
 
