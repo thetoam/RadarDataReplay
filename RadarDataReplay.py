@@ -1,5 +1,6 @@
 import datetime as dt
 import shutil
+import platform
 import threading
 import time
 
@@ -14,12 +15,21 @@ def fileTransferProcess():
   concurrentTransfers = 3
   timeToSkip = 60 # seconds
   
+  pythonVersionMajor = int(platform.python_version().split(".")[0])
+  pythonVersionMinor = int(platform.python_version().split(".")[1])
+
   while True:
     
     if len(transferQueue) > 0:
       o = transferQueue.pop(0)
-      
-      if (dt.datetime.utcnow() - o[0]).total_seconds() > timeToSkip:
+
+      timeLag = 0
+      if pythonVersionMajor == 2 and pythonVersionMinor < 7:
+        timeLag = (dt.datetime.utcnow() - o[0]).days * 86400 + (dt.datetime.utcnow() - o[0]).seconds
+      else:
+        timeLag = (dt.datetime.utcnow() - o[0]).total_seconds()
+
+      if timeLag > timeToSkip:
         skipTransfer(o[1])
       else:
         # Note: +2 because main thread and "fileTransferProcess" thread are running
@@ -27,7 +37,7 @@ def fileTransferProcess():
           time.sleep(0.1) # Avoid brutal loop by inserting trivial wait time
         f = threading.Thread(target=fileTransfer,args=(o[1],))
         f.start()
-        print(">>Threads: %d" % threading.active_count())
+        #print(">>Threads: %d" % threading.active_count())
         
         
     else:
@@ -115,6 +125,7 @@ class AzimuthScan:
   
   # Simulate the radar scan
   def run(self):
+    global transferQueue
     time.sleep(3) # Simulate antenna move time
     scanTime = 360.0 / self.speed
     scanStartTime = dt.datetime.utcnow()
