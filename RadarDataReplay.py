@@ -46,7 +46,7 @@ def fileTransferProcess():
       time.sleep(0.1) # Avoid brutal loop by inserting trivial wait time
 
 def fileTransfer(fileName):
-  time.sleep(5)
+  #time.sleep(5)
 
   subprocess.call(["./rainftp-bom.sh", "oi-ars-3drapic.bom.gov.au", "radar-sftp", "data/forTransfer/%s" % fileName, "uploads/AUS0", fileName])
 
